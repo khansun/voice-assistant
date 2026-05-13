@@ -1,0 +1,66 @@
+services:
+  asr:
+    build: ./asr
+    container_name: whisper-asr
+    ports:
+      - "6000:6000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  llm:
+    image: ollama/ollama:latest
+    container_name: ollama-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  tts:
+    image: ghcr.io/coqui-ai/tts
+    container_name: coqui-tts
+    ports:
+      - "5002:5002"
+
+    entrypoint: ["python3", "TTS/server/server.py"]
+
+    command:
+      - "--model_name"
+      - "tts_models/en/ljspeech/vits"
+      - "--use_cuda"
+      - "true"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+  webapp:
+    build: ./webapp
+    container_name: webapp
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_URL=http://llm:11434/api/generate
+      - TTS_URL=http://tts:5002/api/tts 
+      - ASR_URL=http://asr:6000/api/transcribe
+    depends_on:
+      - asr
+      - llm
+      - tts                     
+
+volumes:
+  ollama_data:
