@@ -11,6 +11,8 @@ from fastapi.responses import FileResponse
 import gradio as gr
 import requests
 import uvicorn
+import logging
+import json
 
 LLM_URL = os.environ.get("LLM_URL", "http://localhost:11434/api/generate")
 TTS_URL = os.environ.get("TTS_URL", "http://tts:5002/api/tts")
@@ -19,6 +21,48 @@ AUDIO_CACHE = "/app/audio_cache"
 os.makedirs(AUDIO_CACHE, exist_ok=True)
  
 
+logger = logging.getLogger("app")
+logger.setLevel(logging.INFO)
+    
+def ask_llm(prompt: str) -> str:
+    try:
+        system_prompt = """
+        """
+
+        full_prompt = f"You are a Bengali-native phone assistant. Always reply ONLY in Bengali script (বাংলা অক্ষর) No English words or Latin characters keep replies natural and conversational Keep it concise, ideally under 20 words Do not include any extra commentary, explanations, or disclaimers Do not ask questions back to the user Do not include any emojis or special characters : User: {prompt}"
+
+        payload = {
+            "model": "qwen3:8b",
+            "prompt": full_prompt,
+            "stream": False
+        }
+
+        logger.info("=== LLM REQUEST ===")
+        logger.info("Prompt:\n%s", full_prompt)
+
+        resp = requests.post(LLM_URL, json=payload, timeout=45)
+
+        logger.info("=== LLM RESPONSE STATUS === %s", resp.status_code)
+        logger.info("Raw response text:\n%s", resp.text)
+        
+
+        resp.raise_for_status()
+
+        data = resp.json()
+        logger.info("Parsed JSON:\n%s", json.dumps(data, indent=2, ensure_ascii=False))
+
+        result = data.get("response")
+        logger.info(f"result {result}")
+
+        if not result:
+            logger.warning("EMPTY RESPONSE FROM MODEL")
+            return "দুঃখিত, আমি বুঝতে পারিনি।"
+
+        return result.strip()
+
+    except Exception as e:
+        logger.exception("LLM CALL FAILED")
+        return f"LLM error: {str(e)}"
 
 def generate_voice(text: str) -> str:
     """Ask Coqui TTS server to create a WAV file, return local path."""
@@ -28,7 +72,7 @@ def generate_voice(text: str) -> str:
     try:
         resp = requests.get(
             TTS_URL,
-            params={"text": text},
+            params={"text": text, "language": "bn"},
             timeout=60
         )
         resp.raise_for_status()
@@ -57,23 +101,6 @@ def transcribe_audio(file_path: str) -> str:
     except Exception as e:
         return f"[ASR error: {e}]"
     
-def ask_llm(prompt: str) -> str:
-    try:
-        resp = requests.post(
-            LLM_URL,
-            json={
-                "model": "llama3",
-                "prompt": f"You are a helpful voice assistant for a customer. Answer the customer's question concisely: {prompt}",
-                "stream": False,
-                "options": {"num_predict": 128}
-            },
-            timeout=30
-        )
-        resp.raise_for_status()
-        return resp.json().get("response", "").strip() or "I have no answer."
-    except Exception as e:
-        return f"LLM error: {str(e)}"
-
 app = FastAPI(title="Voice Assistant API", description="Test ASR, LLM, TTS individually")
 
 @app.post("/asr")
