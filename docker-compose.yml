@@ -1,9 +1,13 @@
+version: '3.8'
+
 services:
   asr:
     build: ./asr
     container_name: whisper-asr
     ports:
       - "6000:6000"
+    volumes:
+      - asr_data:/root/.cache
     deploy:
       resources:
         reservations:
@@ -28,26 +32,35 @@ services:
               capabilities: [gpu]
 
   tts:
-    image: ghcr.io/coqui-ai/tts
-    container_name: coqui-tts
-    ports:
-      - "5002:5002"
+      image: ghcr.io/coqui-ai/tts
+      container_name: coqui-tts
+      ports:
+        - "5002:5002"
 
-    entrypoint: ["python3", "TTS/server/server.py"]
+      entrypoint: ["python3", "TTS/server/server.py"]
 
-    command:
-      - "--model_name"
-      - "tts_models/en/ljspeech/vits"
-      - "--use_cuda"
-      - "true"
+      command:
+        - "--model_name"
+        - "tts_models/bn/custom/vits-female"
+        - "--use_cuda"
+        - "true"
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      environment:
+        # Forces Coqui to use a specific, predictable directory for caching
+        - TTS_HOME=/root/.cache/tts
+
+      volumes:
+        # Maps your persistent named volume to the cache directory
+        - tts_data:/root/.cache/tts
+
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: 1
+                capabilities: [gpu]
+
   webapp:
     build: ./webapp
     container_name: webapp
@@ -64,3 +77,5 @@ services:
 
 volumes:
   ollama_data:
+  tts_data:
+  asr_data:
