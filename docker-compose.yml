@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   asr:
     build: ./asr
@@ -32,34 +30,32 @@ services:
               capabilities: [gpu]
 
   tts:
-      image: ghcr.io/coqui-ai/tts
-      container_name: coqui-tts
-      ports:
-        - "5002:5002"
+    image: ghcr.io/coqui-ai/tts
+    container_name: coqui-tts
 
-      entrypoint: ["python3", "TTS/server/server.py"]
+    ports:
+      - "5002:5002"
 
-      command:
-        - "--model_name"
-        - "tts_models/bn/custom/vits-female"
-        - "--use_cuda"
-        - "true"
+    entrypoint: ["python3", "TTS/server/server.py"]
 
-      environment:
-        # Forces Coqui to use a specific, predictable directory for caching
-        - TTS_HOME=/root/.cache/tts
+    command:
+      - "--model_path"
+      - "/model/model_file.pth"
+      - "--config_path"
+      - "/model/config.json"
+      - "--use_cuda"
+      - "true"
 
-      volumes:
-        # Maps your persistent named volume to the cache directory
-        - tts_data:/root/.cache/tts
+    volumes:
+      - /home/khansun/repos/voice-assistant/models/rn_vits:/model:ro
 
-      deploy:
-        resources:
-          reservations:
-            devices:
-              - driver: nvidia
-                count: 1
-                capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   webapp:
     build: ./webapp
@@ -77,5 +73,4 @@ services:
 
 volumes:
   ollama_data:
-  tts_data:
   asr_data:
