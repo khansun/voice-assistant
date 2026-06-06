@@ -2,3 +2,7 @@ fastapi
 uvicorn
 requests
 gradio
+langgraph
+bangla
+bnnumerizer
+bnunicodenormalizer

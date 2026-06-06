@@ -9,20 +9,20 @@ app = FastAPI()
 # Load best available model
 try:
     model = WhisperModel(
-        "distil-large-v3",
+        "turbo",
         device="cuda",
         compute_type="float16"
     )
-    print("Loaded distil-large-v3 on GPU")
+    print("Loaded turbo on GPU")
 except Exception as e:
     print(f"GPU model load failed: {e}")
 
     model = WhisperModel(
-        "medium",
+        "turbo",
         device="cpu",
         compute_type="int8"
     )
-    print("Loaded medium on CPU")
+    print("Loaded turbo on CPU")
 
 
 @app.post("/api/transcribe")
@@ -38,14 +38,9 @@ async def transcribe(audio: UploadFile = File(...)):
             tmp_path,
             language="bn",
             task="transcribe",
-
-            beam_size=5,
-            best_of=5,
-
+            beam_size=10,
             temperature=0.0,
-
             vad_filter=True,
-
             condition_on_previous_text=True
         )
 

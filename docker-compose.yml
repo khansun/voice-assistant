@@ -47,7 +47,7 @@ services:
       - "true"
 
     volumes:
-      - /home/khansun/repos/voice-assistant/models/rn_vits:/model:ro
+      - /home/khansun/repos/models/bn_v4:/model:ro
 
     deploy:
       resources:
@@ -70,7 +70,13 @@ services:
       - asr
       - llm
       - tts                     
-
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 volumes:
   ollama_data:
   asr_data:
