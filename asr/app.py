@@ -1,28 +1,20 @@
 from fastapi import FastAPI, UploadFile, File
-from faster_whisper import WhisperModel
+from banglaspeech2text import Speech2Text
 import tempfile
 import shutil
 import os
 
 app = FastAPI()
 
-# Load best available model
+# Initialize the BanglaSpeech2Text model
+# You can pass "tiny", "base", "small", or "large". If left empty, it defaults to "large".
+# It will automatically utilize your GPU if PyTorch with CUDA is installed in your environment.
 try:
-    model = WhisperModel(
-        "turbo",
-        device="cuda",
-        compute_type="float16"
-    )
-    print("Loaded turbo on GPU")
+    print("Loading BanglaSpeech2Text model...")
+    stt = Speech2Text("base") # Feel free to change this based on your VRAM capability
+    print("Model loaded successfully")
 except Exception as e:
-    print(f"GPU model load failed: {e}")
-
-    model = WhisperModel(
-        "turbo",
-        device="cpu",
-        compute_type="int8"
-    )
-    print("Loaded turbo on CPU")
+    print(f"Failed to load model: {e}")
 
 
 @app.post("/api/transcribe")
@@ -30,31 +22,25 @@ async def transcribe(audio: UploadFile = File(...)):
     tmp_path = None
 
     try:
+        # Save uploaded file to a temporary location
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             shutil.copyfileobj(audio.file, tmp)
             tmp_path = tmp.name
 
-        segments, info = model.transcribe(
-            tmp_path,
-            language="bn",
-            task="transcribe",
-            beam_size=10,
-            temperature=0.0,
-            vad_filter=True,
-            condition_on_previous_text=True
-        )
-
-        text = " ".join(
-            segment.text.strip()
-            for segment in segments
-        ).strip()
+        # Transcribe using the dedicated package
+        # The recognize() method handles format conversion and returns the text string directly
+        transcription_text = stt.recognize(tmp_path)
 
         return {
-            "text": text,
-            "language": info.language,
-            "language_probability": info.language_probability
+            "text": transcription_text.strip(),
+            "language": "bn",
+            "model_used": "BanglaSpeech2Text"
         }
 
+    except Exception as e:
+        return {"error": str(e)}
+
     finally:
+        # Clean up the temporary file from the system
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)

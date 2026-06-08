@@ -6,28 +6,13 @@ services:
       - "6000:6000"
     volumes:
       - asr_data:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-  llm:
-    image: ollama/ollama:latest
-    container_name: ollama-llm
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
   tts:
     image: ghcr.io/coqui-ai/tts
@@ -44,39 +29,35 @@ services:
       - "--config_path"
       - "/model/config.json"
       - "--use_cuda"
-      - "true"
+      - "false"
 
     volumes:
-      - /home/khansun/repos/models/bn_v4:/model:ro
+      - ./tts/bn_v4:/model:ro
+      - ./tts/server.py:/root/TTS/server/server.py:ro
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
-  webapp:
-    build: ./webapp
-    container_name: webapp
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  chatbot:
+    build: ./chatbot
+    container_name: chatbot
     ports:
-      - "8000:8000"
-    environment:
-      - LLM_URL=http://llm:11434/api/generate
-      - TTS_URL=http://tts:5002/api/tts 
-      - ASR_URL=http://asr:6000/api/transcribe
-    depends_on:
-      - asr
-      - llm
-      - tts                     
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      - "9000:9000"
+    volumes:
+      - ./chatbot:/app
+
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]    
 volumes:
-  ollama_data:
   asr_data:

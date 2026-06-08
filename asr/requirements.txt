@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-faster-whisper
+banglaspeech2text
 requests
 python-multipart
